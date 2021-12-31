@@ -72,6 +72,7 @@
   UIPercentDrivenInteractiveTransition *_interactionController;
   BOOL _updateScheduled;
   BOOL _isFullWidthSwiping;
+  BOOL _keyboardIsOn;
 }
 
 - (instancetype)initWithManager:(RNSScreenStackManager *)manager
@@ -94,7 +95,12 @@
     // in UIKit but ¯\_(ツ)_/¯
     [_controller setViewControllers:@[ [UIViewController new] ]];
   }
+    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(keyboardCameUp:) name:UIKeyboardWillShowNotification object:nil];
   return self;
+}
+
+- (void)keyboardCameUp:(NSNotification *)notification {
+    _keyboardIsOn = YES;
 }
 
 - (UIViewController *)reactViewController
@@ -437,7 +443,10 @@
       if (![_controller.viewControllers containsObject:top] &&
           ((RNSScreenView *)top.view).replaceAnimation == RNSScreenReplaceAnimationPush) {
         // setting new controllers with animation does `push` animation by default
-        [_controller setViewControllers:controllers animated:YES];
+        [_controller setViewControllers:controllers animated:!_keyboardIsOn];
+        if(_keyboardIsOn) {
+            _keyboardIsOn = NO;
+        }
       } else {
         // last top controller is no longer on stack
         // in this case we set the controllers stack to the new list with
@@ -454,7 +463,10 @@
       NSMutableArray *newControllers = [NSMutableArray arrayWithArray:controllers];
       [newControllers removeLastObject];
       [_controller setViewControllers:newControllers animated:NO];
-      [_controller pushViewController:top animated:YES];
+      [_controller pushViewController:top animated:!_keyboardIsOn];
+      if(_keyboardIsOn) {
+          _keyboardIsOn = NO;
+      }
     } else {
       // don't really know what this case could be, but may need to handle it
       // somehow
